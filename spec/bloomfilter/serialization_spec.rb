@@ -1,13 +1,13 @@
 # encoding: utf-8
 
-require_relative 'spec_helper'
+require 'spec_helper'
 
 require 'tempfile'
 
 module Bloomfilter
-  describe 'Serialization' do
+  describe Serialization do
     before :all do
-      @filter = Bloomfilter.new(:size => 1_000, :false_positive_percentage => 0.01)
+      @filter = Java.new(:size => 1_000, :false_positive_percentage => 0.01)
       @filter << 'hello'
       @filter << 'world'
       @path = Tempfile.new('bloomfilter').path
