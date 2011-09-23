@@ -79,7 +79,7 @@ module Bloomfilter
 
     def delete_keys!
       @filters.each do |f|
-        f.delete_key!
+        f.delete_key! if f.respond_to?(:delete_key!)
       end
     end
     
