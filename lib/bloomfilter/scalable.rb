@@ -45,8 +45,12 @@ module Bloomfilter
       filter_limit_sum
     end
 
+    def current_filter_limit
+      @current_filter_limit ||= next_filter_limit
+    end
+
     def next_filter_limit_reached?
-      @count >= next_filter_limit
+      @count >= current_filter_limit
     end
 
     def create_filter(options)
@@ -62,7 +66,8 @@ module Bloomfilter
                                   :namespace => key_for_index(i),
                                   :seed => @opts[:seed],
                                   :eager => true
-                })
+                                })
+      @current_filter_limit = nil
     end
 
     def include?(key)
