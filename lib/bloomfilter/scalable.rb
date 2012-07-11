@@ -1,6 +1,6 @@
 module Bloomfilter
   class Scalable
-    attr_reader :count
+    attr_reader :count, :weighted_count
 
     def initialize(opts)
       @opts = {
@@ -10,10 +10,16 @@ module Bloomfilter
         :filter_size_growth_factor => 2,
         :namespace => 'scalable',
         :seed => Time.now.to_i,
-        :filter_class => Redis
+        :filter_class => Redis,
+        :version => 2
       }.merge(opts)
       @filters = []
       @count = 0
+      @weighted_count = 0 if version > 1
+    end
+
+    def version
+      @opts[:version] || 1
     end
 
     def size
@@ -88,13 +94,14 @@ module Bloomfilter
       end
     end
     
-    def insert(key)
+    def insert(key, weight=1)
       if include?(key)
         false
       else
         add_filter! if next_filter_limit_reached?
         @filters.last.insert(key)
         @count += 1
+        @weighted_count += weight if @weighted_count
         true
       end
     end

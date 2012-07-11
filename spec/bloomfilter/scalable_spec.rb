@@ -12,6 +12,34 @@ module Bloomfilter
 
     [Redis, Java].each do |klass|
       context "using #{klass}" do
+
+        context 'weighted count' do
+          before do
+            clear_redis!
+          end
+          after do
+            clear_redis!
+          end
+          it 'should not define @weighted_count unless version >=2' do
+            Scalable.new(:filter_class => klass, :version => nil)
+              .instance_variables.should_not include(:@weighted_count)
+            Scalable.new(:filter_class => klass, :version => 2)
+              .instance_variables.should include(:@weighted_count)
+          end
+          it 'updates weighted count correctly' do
+            scalable = Scalable.new(
+              :namespace => 'scalable_spec',
+              :seed => 1447271,
+              :filter_class => klass, 
+              :version => 2)
+            100.times do |i|
+              scalable.insert("key#{i}",i)
+            end
+            scalable.count.should be_between(99,100)
+            scalable.weighted_count.should be_between(4455,4950)
+          end
+        end
+
         context 'with little data' do
           before do
             clear_redis!
@@ -131,7 +159,7 @@ module Bloomfilter
               100.times do |i|
                 @scalable.insert((i*1000).to_s(36))
               end
-              r.keys('*scalable_spec*').sort.should == ['scalable_spec/0', 'scalable_spec/1', 'scalable_spec/2', 'scalable_spec/3'].sort
+              r.keys('*scalable_spec*').sort.should == ['scalable_spec/0', 'scalable_spec/1', 'scalable_spec/2', 'scalable_spec/3'].sort if klass == Redis
               @scalable.delete_keys!
               r.keys('*scalable_spec*').should == []
             end
@@ -202,8 +230,49 @@ module Bloomfilter
             not_included_count.should be_between(0.99*10000, 10000)
           end
         end
-
       end
     end
+
+    context 'serialization' do
+
+      before :all do
+        @opts = {
+          :initial_size => 20000,
+          :error_probability_bound => 0.01,
+          :error_probability_tightening_factor => 0.5,
+          :filter_size_growth_factor => 2,
+          :namespace => 'scalable',
+          :seed => Time.now.to_i,
+          :filter_class => Bloomfilter::Java
+        }
+      end
+
+      it 'should deserialize objects of version <2 properly' do
+        scalable = Scalable.new(@opts)
+        scalable.send(:remove_instance_variable, :@weighted_count)
+        scalable.instance_variable_get(:@opts).delete(:version)
+        100.times do |i|
+          scalable.insert(i.to_s)
+        end
+        str = Marshal.dump(scalable)
+        scalable = Marshal.load(str)
+        scalable.instance_variables.should_not include :@weighted_count
+        scalable.count.should be_between(99,100)
+        scalable.version.should == 1
+      end
+
+      it 'should deserialize objects of version 2 properly' do
+        scalable = Scalable.new(@opts.merge(:version => 2))
+        100.times do |i|
+          scalable.insert(i.to_s,10)
+        end
+        str = Marshal.dump(scalable)
+        scalable = Marshal.load(str)
+        scalable.count.should be_between(99,100)
+        scalable.weighted_count.should be_between(990,1000)
+        scalable.version.should == 2
+      end
+    end
+  
   end
 end
