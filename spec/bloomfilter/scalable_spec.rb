@@ -3,23 +3,10 @@ require 'benchmark'
 
 module Bloomfilter
   describe Scalable do
-    def clear_redis!
-      redis = ::Redis.new
-      redis.keys('*scalable_spec*').each do |k|
-        redis.del k
-      end
-    end
-
-    [Redis, Java].each do |klass|
+    [Java].each do |klass|
       context "using #{klass}" do
 
         context 'weighted count' do
-          before do
-            clear_redis!
-          end
-          after do
-            clear_redis!
-          end
           it 'should not define @weighted_count unless version >=2' do
             Scalable.new(:filter_class => klass, :version => nil)
               .instance_variables.should_not include(:@weighted_count)
@@ -42,7 +29,6 @@ module Bloomfilter
 
         context 'with little data' do
           before do
-            clear_redis!
             @opts = {
               :initial_size => 100,
               :error_probability_bound => 0.01,
@@ -53,10 +39,6 @@ module Bloomfilter
               :filter_class => klass
             }
             @scalable = Scalable.new(@opts)
-          end
-
-          after do
-            # clear_redis!
           end
 
           it 'starts out with no filters' do
@@ -145,23 +127,11 @@ module Bloomfilter
           end
 
           context '#keys' do
-            it 'gives all redis keys' do
+            it 'gives all namespaced keys' do
               100.times do |i|
                 @scalable.insert((i*1000).to_s(36))
               end
               @scalable.keys.should == ['scalable_spec/0', 'scalable_spec/1', 'scalable_spec/2', 'scalable_spec/3']
-            end
-          end
-
-          context '#delete_keys!' do
-            it 'deletes all redis keys' do
-              r = ::Redis.new
-              100.times do |i|
-                @scalable.insert((i*1000).to_s(36))
-              end
-              r.keys('*scalable_spec*').sort.should == ['scalable_spec/0', 'scalable_spec/1', 'scalable_spec/2', 'scalable_spec/3'].sort if klass == Redis
-              @scalable.delete_keys!
-              r.keys('*scalable_spec*').should == []
             end
           end
 
@@ -175,7 +145,6 @@ module Bloomfilter
         
         context 'with lots of duplicate data' do
           before :all do
-            clear_redis!
             @opts = {
               :initial_size => 100,
               :error_probability_bound => 0.01,
@@ -190,20 +159,10 @@ module Bloomfilter
               Zlib.crc32("key#{i}").to_s
             end
             @insert_count = 0
-            puts "Inserting #{@data.size} keys, timed: "
-            @new_scalable = nil
-            puts Benchmark.measure { 
-              @new_scalable = Scalable.new(@opts.merge({ :initial_size => 1000000 }))
-              2.times do
-                @data.each do |k|
-                  @insert_count += @new_scalable.insert(k) ? 1 : 0
-                end
-              end
-            }
-          end
-
-          after :all do
-            # clear_redis!
+            @new_scalable = Scalable.new(@opts.merge({ :initial_size => 1000000 }))
+            @data.each do |k|
+              @insert_count += 1 if @new_scalable.insert(k)
+            end
           end
 
           it 'keeps the count' do

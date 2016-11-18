@@ -15,8 +15,6 @@ Gem::Specification.new do |s|
   s.description = %q{JRuby wrapper (+ some extra functionality) to http://code.google.com/p/java-bloomfilter}
 
   s.rubyforge_project = 'jruby-bloomfilter'
-  s.add_runtime_dependency 'jets3t-rb'
-  s.add_runtime_dependency 'redis'
 
   s.add_development_dependency 'rspec'
 

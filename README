@@ -1,7 +1,0 @@
-Redis filter (lib/bloomfilter/redis.rb) license:
-
-License
-
-MIT License - Copyright (c) 2011 Ilya Grigorik
-
-See https://github.com/igrigorik/bloomfilter-rb

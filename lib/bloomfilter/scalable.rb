@@ -10,7 +10,7 @@ module Bloomfilter
         :filter_size_growth_factor => 2,
         :namespace => 'scalable',
         :seed => Time.now.to_i,
-        :filter_class => Redis,
+        :filter_class => Java,
         :version => 2
       }.merge(opts)
       @filters = []
@@ -88,12 +88,6 @@ module Bloomfilter
       "#{@opts[:namespace]}/#{i}"
     end
 
-    def delete_keys!
-      @filters.each do |f|
-        f.delete_key! if f.respond_to?(:delete_key!)
-      end
-    end
-    
     def insert(key, weight=1)
       if include?(key)
         false
